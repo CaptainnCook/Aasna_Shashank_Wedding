@@ -870,7 +870,8 @@ function kickMusic(e) {
   if (e && e.target && e.target.closest && e.target.closest('#musicBtn')) return;
   if (!userStopped && audio.paused) startMusic();
 }
-['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(ev => addEventListener(ev, kickMusic, { passive: true }));
+// iPhones only allow sound to start from a completed tap (touchend / click), not from touchstart
+['touchend', 'click', 'pointerup', 'keydown'].forEach(ev => addEventListener(ev, kickMusic, { passive: true, capture: true }));
 
 /* ---------- particles ---------- */
 const cv = document.getElementById('fx'), cx = cv.getContext('2d');
