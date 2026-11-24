@@ -405,14 +405,27 @@ body.locked{overflow:hidden;height:100svh}
 @keyframes twk{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important;transition-duration:.3s!important}}
 </style>
+<script>
+/* Collects script errors. Add ?debug=1 to the link to see them on screen. */
+window.__errs = [];
+window.addEventListener('error', function (e) { window.__errs.push((e.message || 'error') + ' @' + (e.lineno || '?') + ':' + (e.colno || '?')); show(); });
+window.addEventListener('unhandledrejection', function (e) { window.__errs.push('promise: ' + (e.reason && e.reason.message || e.reason)); show(); });
+function show() {
+  if (!/[?&]debug/.test(location.search)) return;
+  var d = document.getElementById('__dbg');
+  if (!d) { d = document.createElement('pre'); d.id = '__dbg'; d.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:999;max-height:40vh;overflow:auto;margin:0;padding:8px;background:#fff;color:#900;font:12px/1.4 monospace;white-space:pre-wrap;border:2px solid #900'; (document.body || document.documentElement).appendChild(d); }
+  d.textContent = navigator.userAgent + '\n\n' + (window.__errs.join('\n') || 'no errors');
+}
+document.addEventListener('DOMContentLoaded', show);
+</script>
 </head>
-<body data-theme="marigold" class="locked frame-page">
+<body data-theme="marigold" class="locked frame-page card-opened pages-ready">
 <canvas id="fx" aria-hidden="true"></canvas>
 
 
 <div class="picker" id="picker" role="group" aria-label="Font"></div>
 <main class="stage">
-  <div class="card" id="card">
+  <div class="card open gone" id="card">
     <div class="cover" id="cover">
       <div class="book" id="book">
         <!-- page 3: programme -->
@@ -560,6 +573,7 @@ body.locked{overflow:hidden;height:100svh}
 
 <script>
 {
+const FONTS_API = (document.fonts && document.fonts.load) ? document.fonts : { load: () => Promise.resolve(), ready: Promise.resolve() };
 const WEDDING = new Date('2026-12-03T10:15:00+05:45');
 const params = new URLSearchParams(location.search);
 const f = n => +n.toFixed(1);
@@ -680,7 +694,7 @@ function setFont(k) {
   const [fam, kf, w] = FONTS[k] || FONTS.amita;
   body.style.setProperty('--df', fam); body.style.setProperty('--dk', kf); body.style.setProperty('--dw', w);
   document.querySelectorAll('#picker button').forEach(b => b.setAttribute('aria-pressed', b.dataset.f === k));
-  document.fonts.load(`${w} 40px ${fam}`, 'शुभ').then(placeRing);
+  FONTS_API.load(`${w} 40px ${fam}`, 'शुभ').then(placeRing);
 }
 function placeRing() {
   const cov = document.querySelector('.cover'), sa = document.querySelector('.sealbox'), sl = document.getElementById('seal');
@@ -836,12 +850,12 @@ let hasMusic = true;
 const noMusic = () => { hasMusic = false; mBtn.style.display = 'none'; };
 audio.addEventListener('error', noMusic);
 if (audio.error) noMusic();
-audio.volume = .10;   // soft background level, same as the original invitation
+try { audio.volume = .10; } catch (e) {}   // soft background level, same as the original invitation
 let userStopped = false;            // set once the guest taps the icon to stop the music
 const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
 const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path d="M3 3l18 18"/></svg>';
 function setPlaying(p) { mBtn.classList.toggle('playing', p); mBtn.innerHTML = p ? ICON_ON : ICON_OFF; mBtn.setAttribute('aria-label', p ? 'संगीत रोक्नुहोस् · Stop music' : 'संगीत बजाउनुहोस् · Play music'); }
-function startMusic() { if (!hasMusic) return; const p = audio.play(); if (p) p.then(() => setPlaying(true)).catch(() => setPlaying(!userStopped)); }
+function startMusic() { if (!hasMusic) return; let p; try { p = audio.play(); } catch (e) { return; } if (p) p.then(() => setPlaying(true)).catch(() => setPlaying(!userStopped)); }
 let everPlayed = false; audio.addEventListener('playing', () => { everPlayed = true; });
 mBtn.addEventListener('click', () => {
   if (!everPlayed && !userStopped) { userStopped = true; setPlaying(false); return; }   // first tap on the icon means "stop"
@@ -942,7 +956,7 @@ function setP2Font(kind, i) {
   if (kind === 'h') { const [f, w] = P2H[i]; p2.style.setProperty('--p2h', f); p2.style.setProperty('--p2hw', w); }
   else { const [f, w, k] = P2B[i]; p2.style.setProperty('--p2b', f); p2.style.setProperty('--p2bw', w); p2.style.setProperty('--p2bk', k); }
   document.querySelectorAll(`#picker [data-k="${kind}"]`).forEach(b => b.setAttribute('aria-pressed', +b.dataset.i === i));
-  document.fonts.ready.then(() => requestAnimationFrame(fitPages));
+  FONTS_API.ready.then(() => requestAnimationFrame(fitPages));
 }
 if (P2_FONT_PREVIEW || params.has('p2fonts')) {
   body.classList.add('preview');
@@ -983,7 +997,7 @@ setP3('b');
 card.classList.add('open', 'gone'); body.classList.add('card-opened', 'pages-ready');
 
 if (DEMO) jump(3);   // browsers need a tap before music can play
-document.fonts.ready.then(() => { placeRing(); fitPages(); });
+FONTS_API.ready.then(() => { placeRing(); fitPages(); });
 fitPages();
 
 /* ---------- start ---------- */
